@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Shelf Night",
+    "slug": "shelf-night",
+    "scheme": "shelfnight",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shelfnight.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Shelf Night uses the camera to photograph your game shelf so it can add your games for you.",
+        "NSPhotoLibraryUsageDescription": "Shelf Night reads a photo of your game shelf so it can add your games for you."
+      }
+    },
+    "android": {
+      "package": "com.shelfnight.app",
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Shelf Night reads a photo of your game shelf so it can add your games for you.",
+          "cameraPermission": "Shelf Night uses the camera to photograph your game shelf so it can add your games for you."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
