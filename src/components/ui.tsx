@@ -150,17 +150,24 @@ export function GameLid({ name, size = 72 }: { name: string; size?: number }) {
 
 export function GameStats({ game }: { game: Game }) {
   const c = useColors();
-  const players = game.min_players === game.max_players ? `${game.min_players}p` : `${game.min_players}–${game.max_players}p`;
-  const filled = Math.round(Number(game.weight));
+  const { min_players: mn, max_players: mx } = game;
+  const players =
+    mn == null && mx == null ? '? players'
+      : mn != null && mx != null ? (mn === mx ? `${mn}p` : `${mn}–${mx}p`)
+      : mn != null ? `${mn}+p` : `up to ${mx}p`;
+  const w = game.weight == null ? null : Number(game.weight);
   return (
     <View style={styles.stats}>
       <Text style={[styles.stat, { color: c.muted }]}>{players}</Text>
-      <Text style={[styles.stat, { color: c.muted }]}>{game.play_minutes} min</Text>
-      <View style={{ flexDirection: 'row', gap: 2 }} accessibilityLabel={`Weight ${Number(game.weight).toFixed(1)} of 5`}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <View key={i} style={{ width: 6, height: 10, borderRadius: 2, backgroundColor: i <= filled ? c.fg : c.line }} />
-        ))}
-      </View>
+      <Text style={[styles.stat, { color: c.muted }]}>{game.play_minutes != null ? `${game.play_minutes} min` : '? min'}</Text>
+      {game.year ? <Text style={[styles.stat, { color: c.muted }]}>{game.year}</Text> : null}
+      {w != null ? (
+        <View style={{ flexDirection: 'row', gap: 2 }} accessibilityLabel={`Weight ${w.toFixed(1)} of 5`}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={{ width: 6, height: 10, borderRadius: 2, backgroundColor: i <= Math.round(w) ? c.fg : c.line }} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

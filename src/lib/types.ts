@@ -2,12 +2,15 @@ export type Game = {
   id: number;
   name: string;
   year: number | null;
-  min_players: number;
-  max_players: number;
-  play_minutes: number;
-  weight: number; // 1 (light) to 5 (heavy)
+  // Imported games can be missing any of these; the app treats null as "unknown".
+  min_players: number | null;
+  max_players: number | null;
+  play_minutes: number | null;
+  weight: number | null; // 1 (light) to 5 (heavy)
   tags: string[];
   bgg_id: number | null;
+  wikidata_id: string | null;
+  source: 'curated' | 'wikidata' | 'community';
 };
 
 export type Profile = {

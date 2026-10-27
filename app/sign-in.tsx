@@ -64,7 +64,7 @@ export default function SignIn() {
         <Banner text={message?.text} tone={message?.tone} />
       </Card>
       <Text style={{ color: c.muted, fontSize: 12 }}>
-        Game data will be provided by BoardGameGeek.
+        Game data from Wikidata and the Shelf Night community.
       </Text>
     </Screen>
   );

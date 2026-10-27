@@ -51,7 +51,7 @@ export default function Settings() {
         <Text style={{ color: c.accent }} onPress={() => Linking.openURL(config.termsUrl)}>Community rules and terms</Text>
         <Text style={{ color: c.accent }} onPress={() => Linking.openURL(config.privacyUrl)}>Privacy policy</Text>
         <Muted>Support: {config.supportEmail}</Muted>
-        <Muted>Game data will be provided by BoardGameGeek.</Muted>
+        <Muted>Game data from Wikidata and the Shelf Night community.</Muted>
       </Card>
 
       <Button title="Sign out" kind="ghost" onPress={signOut} />

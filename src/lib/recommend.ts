@@ -20,39 +20,54 @@ export function weightBand(w: number): Exclude<Weight, 'any'> {
   return 'heavy';
 }
 
-/** Score one owned game for tonight. Returns null when it can't be played. */
+/**
+ * Score one owned game for tonight. Returns null when it can't be played.
+ * Imported games may be missing details; unknowns never rule a game out,
+ * they just score a little lower and say so.
+ */
 export function scoreTonight(game: Game, input: TonightInput): TonightPick | null {
   const { players, minutes, weight, vibe, newcomers } = input;
   const reasons: Reason[] = [];
-  if (players < game.min_players || players > game.max_players) return null;
+  const { min_players: minP, max_players: maxP, play_minutes: time, weight: w } = game;
 
   let score = 50;
-  reasons.push({ ok: true, text: `Plays ${players}` });
+  if (minP == null && maxP == null) {
+    score -= 8;
+    reasons.push({ ok: false, text: 'Player count unknown' });
+  } else {
+    if ((minP != null && players < minP) || (maxP != null && players > maxP)) return null;
+    reasons.push({ ok: true, text: `Plays ${players}` });
+  }
 
-  if (game.play_minutes <= minutes) {
+  if (time == null) {
+    score -= 8;
+    reasons.push({ ok: false, text: 'Length unknown' });
+  } else if (time <= minutes) {
     score += 15;
-    reasons.push({ ok: true, text: `${game.play_minutes} min fits` });
-  } else if (game.play_minutes <= minutes * 1.25) {
+    reasons.push({ ok: true, text: `${time} min fits` });
+    if (minutes - time > 60) score -= 6;
+  } else if (time <= minutes * 1.25) {
     score -= 10;
-    reasons.push({ ok: false, text: `Runs a bit long (${game.play_minutes} min)` });
+    reasons.push({ ok: false, text: `Runs a bit long (${time} min)` });
   } else {
     return null;
   }
-  if (minutes - game.play_minutes > 60) score -= 6;
 
-  const band = weightBand(game.weight);
   if (weight !== 'any') {
-    if (band === weight) {
+    if (w == null) score -= 10;
+    else if (weightBand(w) === weight) {
       score += 15;
-      reasons.push({ ok: true, text: `${band[0].toUpperCase()}${band.slice(1)} weight` });
+      reasons.push({ ok: true, text: `${weight[0].toUpperCase()}${weight.slice(1)} weight` });
     } else score -= 20;
   }
 
   if (newcomers) {
-    if (game.weight <= 2.0) {
+    if (w == null) {
+      reasons.push({ ok: false, text: 'Complexity unknown' });
+    } else if (w <= 2.0) {
       score += 12;
       reasons.push({ ok: true, text: 'Easy to teach' });
-    } else if (game.weight <= 2.5) {
+    } else if (w <= 2.5) {
       reasons.push({ ok: false, text: 'Short teach needed' });
     } else {
       score -= 25;
@@ -75,8 +90,7 @@ export function scoreTonight(game: Game, input: TonightInput): TonightPick | nul
   }
 
   // Games play best near the middle of their player range.
-  const mid = (game.min_players + game.max_players) / 2;
-  score -= Math.abs(players - mid) * 1.5;
+  if (minP != null && maxP != null) score -= Math.abs(players - (minP + maxP) / 2) * 1.5;
 
   return { game, score, reasons };
 }
@@ -96,7 +110,9 @@ export function similarity(a: Game, b: Game): number {
   const B = new Set(b.tags.filter((t) => !IGNORE.has(t)));
   const inter = [...A].filter((t) => B.has(t)).length;
   const union = new Set([...A, ...B]).size || 1;
-  return inter / union - Math.abs(a.weight - b.weight) * 0.12 - Math.abs(a.play_minutes - b.play_minutes) / 600;
+  const weightGap = a.weight != null && b.weight != null ? Math.abs(a.weight - b.weight) * 0.12 : 0.05;
+  const timeGap = a.play_minutes != null && b.play_minutes != null ? Math.abs(a.play_minutes - b.play_minutes) / 600 : 0.05;
+  return inter / union - weightGap - timeGap;
 }
 
 export type Suggestion = { game: Game; because: Game; shared: string[]; score: number };
@@ -105,7 +121,8 @@ export function suggestSimilar(all: Game[], ownedIds: Set<number>, limit = 20): 
   const mine = all.filter((g) => ownedIds.has(g.id));
   if (!mine.length) return [];
   return all
-    .filter((g) => !ownedIds.has(g.id))
+    // Only suggest games with enough detail to be useful.
+    .filter((g) => !ownedIds.has(g.id) && g.tags.some((t) => !IGNORE.has(t) && t !== 'solo'))
     .map((g) => {
       let best = mine[0];
       let bestScore = -Infinity;
@@ -121,17 +138,28 @@ export function suggestSimilar(all: Game[], ownedIds: Set<number>, limit = 20): 
     .slice(0, limit);
 }
 
-/** Match a title read from a photo to a game in the catalog. */
+/**
+ * Match a title read from a photo to a game in the catalog.
+ * Exact name first, then the name before a colon, then the closest partial match
+ * (hand-checked games win ties, then the closest length).
+ */
 export function matchTitle(title: string, games: Game[]): Game | undefined {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const n = norm(title);
-  if (n.length < 3) return undefined;
-  return (
-    games.find((g) => norm(g.name) === n) ??
-    games.find((g) => norm(g.name.split(':')[0]) === n) ??
-    games.find((g) => {
-      const gn = norm(g.name);
-      return gn.length >= 4 && n.length >= 4 && (n.includes(gn) || gn.includes(n));
-    })
-  );
+  if (n.length < 2) return undefined;
+  const prefer = (list: Game[]) =>
+    list.sort((a, b) =>
+      Number(b.source === 'curated') - Number(a.source === 'curated') ||
+      Math.abs(norm(a.name).length - n.length) - Math.abs(norm(b.name).length - n.length))[0];
+
+  const exact = games.filter((g) => norm(g.name) === n);
+  if (exact.length) return prefer(exact);
+  const beforeColon = games.filter((g) => norm(g.name.split(':')[0]) === n);
+  if (beforeColon.length) return prefer(beforeColon);
+  if (n.length < 5) return undefined; // short words match too many games
+  const partial = games.filter((g) => {
+    const gn = norm(g.name);
+    return gn.length >= 5 && (n.includes(gn) || gn.includes(n)) && Math.min(gn.length, n.length) / Math.max(gn.length, n.length) >= 0.6;
+  });
+  return partial.length ? prefer(partial) : undefined;
 }

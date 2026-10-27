@@ -10,3 +10,4 @@ android/
 .env.local
 .DS_Store
 supabase/.temp/
+scripts/output/

@@ -4,7 +4,7 @@
 export const config = {
   /**
    * Ads stay OFF until two things are true:
-   *  1. You have a BoardGameGeek commercial license (ads count as commercial use).
+   *  1. The app uses no BoardGameGeek API data, or you have BGG's commercial license (ads count as commercial use).
    *  2. You have an AdMob account and have added react-native-google-mobile-ads
    *     (see README → "Turning on ads").
    */

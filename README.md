@@ -79,6 +79,28 @@ Moderators can delete any post and see reported or auto-hidden posts. Review rep
 select * from public.reports where status = 'open' order by created_at desc;
 ```
 
+### 7. Fill the catalog with thousands of games from Wikidata (free)
+
+Wikidata is a free, public-domain database (the same data behind Wikipedia). Its game data can be used commercially, including with ads, with no license needed. The import pulls every board and card game on Wikidata that has a BoardGameGeek ID, typically several thousand titles.
+
+1. In Supabase **SQL Editor**, run `supabase/migrations/0002_wikidata.sql` the same way you ran the first file.
+2. In Supabase **Project Settings → API**, copy the **service_role** key (click "Reveal"). Paste it into your `.env` file after `SUPABASE_SERVICE_ROLE_KEY=`.
+   This key can change anything in your database. Never share it, and never rename it to start with `EXPO_PUBLIC_`.
+3. Preview first. Nothing is saved:
+   ```bash
+   npm run import:wikidata:preview
+   ```
+   It prints how many games it found and how many have player counts and play times, and it saves them to `scripts/output/wikidata-games.json` so you can look through them.
+4. Import for real:
+   ```bash
+   npm run import:wikidata
+   ```
+5. Restart the app. The shelf, search and scan now use the full catalog.
+
+**How it merges:** your 41 hand-checked starter games keep their values; Wikidata only fills in what's missing (like the BGG ID). Imported games are marked `source = 'wikidata'`, and re-running the import later refreshes them with Wikidata's latest data. Run it every month or two to pick up new games.
+
+**What to expect:** Wikidata has names and years for nearly every game, but player counts and play times only for some, and no complexity ratings. The app handles missing details: such games still show up, marked "Player count unknown" or "Length unknown", and rank below games with full details. You can fill in details for popular games over time, by hand in Supabase **Table Editor → games**, or later through community edits.
+
 ---
 
 ## Part 2: Turn on photo scanning (costs a few cents per scan)
@@ -105,7 +127,7 @@ Each person gets 5 scans a day by default (change `DAILY_SCAN_LIMIT` with `npx s
 
 These are not optional. Skipping them gets apps rejected or removed.
 
-- [ ] **BoardGameGeek license.** Register your app at <https://boardgamegeek.com/applications>. A non-commercial license is enough while the app is free and ad-free. **Before turning on ads or charging money, you need their commercial license.** Then add a BGG import to replace the 41-game starter catalog, and show the "Powered by BGG" logo linked to boardgamegeek.com.
+- [ ] **Game data.** The catalog comes from Wikidata (public domain, fine for ads and paid features) plus your own hand-checked games. Storing BGG ID numbers to link out to BoardGameGeek is fine, but if you ever pull data *from* BGG's API (ratings, complexity, descriptions, images), you need their license: free non-commercial while the app is ad-free, commercial once it earns money, plus the "Powered by BGG" logo. Don't use box art you found online; publishers own it.
 - [ ] **Terms of use and privacy policy.** Host both pages (a free site like Notion or Carrd works) and put the links in `src/config.ts`. The privacy policy must mention email sign-in, photos sent for scanning, and ads once they're on.
 - [ ] **Support email** in `src/config.ts`.
 - [ ] **Moderation plan.** Both app stores require apps with user posts to let people report and block (built in), act on reports quickly, and remove abusive users. Check reports at least daily. Three separate reports automatically hide a post until a moderator looks at it.
@@ -137,7 +159,7 @@ Change `com.shelfnight.app` in `app.json` to your own identifier (e.g. `com.your
 
 ## Part 5: Turning on ads (later)
 
-1. Get the BoardGameGeek **commercial** license first.
+1. Confirm the app uses no data from BoardGameGeek's API (the Wikidata catalog is fine). If it does, get BGG's **commercial** license first.
 2. Create an AdMob account (phones) and an AdSense account (web).
 3. `npx expo install react-native-google-mobile-ads`, add its plugin to `app.json` with your AdMob app IDs, and follow the steps written in `src/components/AdSlot.tsx`.
 4. On iPhone, ads that track users need Apple's tracking permission prompt (`expo-tracking-transparency`).
